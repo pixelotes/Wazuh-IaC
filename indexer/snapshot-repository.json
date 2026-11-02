@@ -1,0 +1,11 @@
+{
+  "type": "s3",
+  "settings": {
+    "bucket": "wazuh-snapshots",
+    "base_path": "wazuh",
+    "endpoint": "http://s3.s3.svc.cluster.local:8333",
+    "protocol": "http",
+    "path_style_access": true,
+    "region": "eu-west-1"
+  }
+}

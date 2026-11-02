@@ -1,0 +1,35 @@
+<!-- Container logs collected by the node agent. Custom ids 100300-100399. -->
+<group name="kubernetes,container,iac,">
+
+  <rule id="100300" level="0">
+    <decoded_as>cri-container</decoded_as>
+    <description>Container log line (CRI)</description>
+  </rule>
+
+  <!-- A request reached the API server with credentials it could not validate -->
+  <rule id="100310" level="8">
+    <if_sid>100300</if_sid>
+    <location>kube-apiserver</location>
+    <field name="cri.message" type="pcre2">Unable to authenticate the request</field>
+    <description>Kubernetes: API server could not authenticate a request</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+  <rule id="100311" level="11" frequency="5" timeframe="120">
+    <if_matched_sid>100310</if_matched_sid>
+    <description>Kubernetes: repeated API server authentication failures</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+
+  <!-- A process crashed -->
+  <rule id="100320" level="7">
+    <if_sid>100300</if_sid>
+    <field name="cri.message" type="pcre2">^(?:panic:|fatal error:|Traceback \(most recent call last\))</field>
+    <description>Kubernetes: container crashed ($(cri.message))</description>
+  </rule>
+
+</group>

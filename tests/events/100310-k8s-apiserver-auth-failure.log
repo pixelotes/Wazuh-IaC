@@ -1,0 +1,1 @@
+2026-11-02T13:40:12.123456789Z stderr F E1102 13:40:12.123456       1 authentication.go:73] "Unable to authenticate the request" err="[invalid bearer token, token lookup failed]"

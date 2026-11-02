@@ -1,0 +1,32 @@
+# Configures snapshots to S3 (repository + SLM policy) and index lifecycle (ISM) after every sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wazuh-backup-setup
+  namespace: wazuh
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        app: wazuh-backup-setup
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: python:3.13-alpine
+          command: ["python", "-I", "/setup/backup-setup.py"]
+          env:
+            - name: INDEXER_PASSWORD
+              valueFrom: {secretKeyRef: {name: wazuh-indexer-cred, key: INDEXER_PASSWORD}}
+          volumeMounts:
+            - {name: script, mountPath: /setup, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+      volumes:
+        - name: script
+          configMap: {name: wazuh-backup-setup}
+        - name: config
+          configMap: {name: wazuh-backup-config}

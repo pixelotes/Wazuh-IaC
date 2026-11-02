@@ -1,0 +1,3 @@
+#!/bin/sh
+# Wazuh looks for integrations/<name> and runs it as: custom-opsgenie <alert-file> <api_key> <hook_url> [debug]
+exec /var/ossec/framework/python/bin/python3 /var/ossec/integrations/custom-opsgenie.py "$@"

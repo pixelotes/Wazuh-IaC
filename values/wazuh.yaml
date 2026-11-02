@@ -1,0 +1,253 @@
+# Single-node Wazuh: 1 indexer, 1 manager (master), 0 workers, 1 dashboard.
+# Passwords live in Secrets created by scripts/gen-secrets.sh; only bcrypt hashes
+# go to Git (values/wazuh-credentials.yaml) because Argo CD renders with `helm template`,
+# where the chart's Secret `lookup` for *_PASSWORD_HASH does not work.
+autoreload:
+  enabled: true # roll the manager when its config changes (ossec.conf is read at pod start)
+
+certificates:
+  enabled: true # cert-manager issues the indexer/manager/dashboard certs
+
+indexer:
+  replicas: 1
+  storageSize: 10Gi
+  cred:
+    existingSecret: wazuh-indexer-cred
+  # repository-s3 is not part of the Wazuh indexer image: the init container installs it and builds a
+  # keystore with the S3 credentials (kustomize/wazuh/files/indexer-s3-init.sh)
+  initContainers:
+    - name: s3-plugin
+      image: wazuh/wazuh-indexer:4.14.9
+      command: ["/bin/sh", "/init/indexer-s3-init.sh"]
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom: {secretKeyRef: {name: wazuh-s3-env, key: AWS_ACCESS_KEY_ID}}
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom: {secretKeyRef: {name: wazuh-s3-env, key: AWS_SECRET_ACCESS_KEY}}
+      volumeMounts:
+        - {name: s3-init, mountPath: /init, readOnly: true}
+        - {name: s3-plugin, mountPath: /s3-plugin}
+        - {name: s3-keystore, mountPath: /s3-keystore}
+  additionalVolumes:
+    - name: s3-init
+      configMap:
+        name: wazuh-indexer-s3-init # kustomize appends a content hash
+    - {name: s3-plugin, emptyDir: {}}
+    - {name: s3-keystore, emptyDir: {}}
+  additionalVolumeMounts:
+    - {name: s3-plugin, mountPath: /usr/share/wazuh-indexer/plugins/repository-s3}
+    - {name: s3-keystore, mountPath: /usr/share/wazuh-indexer/config/opensearch.keystore, subPath: opensearch.keystore}
+  extraSpec:
+    pod:
+      hostAliases:
+        - {ip: 10.96.0.53, hostnames: [dex.localhost]}
+  networkPolicy:
+    extraIngresses:
+      # backup-setup Job (PostSync hook) configures snapshots and lifecycle through the REST API
+      - from:
+          - podSelector:
+              matchLabels:
+                app: wazuh-backup-setup
+        ports:
+          - {protocol: TCP, port: 9200}
+    extraEgresses:
+      # snapshots to the S3 stand-in
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: s3
+        ports:
+          - {protocol: TCP, port: 8333}
+      # OIDC discovery and signing keys from Dex
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: dex
+        ports:
+          - {protocol: TCP, port: 5556}
+      # the init container downloads the repository-s3 plugin (drop this once it is baked into the image)
+      - ports:
+          - {protocol: TCP, port: 443}
+
+dashboard:
+  cred:
+    existingSecret: wazuh-dashboard-cred
+  service:
+    type: NodePort
+    nodePort: 30443
+  # SSO with Dex. The basic-auth login stays available as a fallback (the chart orders OIDC first).
+  # Roles are mapped by the email claim because Dex static users have no groups; with a real IdP use
+  # rolesKey: groups and map group names instead.
+  sso:
+    oidc:
+      enabled: true
+      # primary: true makes the indexer's OIDC domain non-challenging. With challenge: true (and the OIDC
+      # domain ordered before basic auth) every request without a Bearer token gets an immediate 401,
+      # basic auth is never tried and the dashboard cannot talk to the indexer.
+      primary: true
+      url: http://dex.localhost:5556/.well-known/openid-configuration
+      issuer: http://dex.localhost:5556
+      logoutUrl: http://dex.localhost:5556/
+      baseRedirectUrl: http://localhost:8443
+      scope: "openid profile email"
+      existingSecret: wazuh-oidc
+      config:
+        # Dex static users have no preferred_username claim (it is empty), so the email is both the
+        # user name and, as rolesKey, the backend role that the mappings below refer to
+        subjectKey: email
+        rolesKey: email
+      roleMappings:
+        allAccess:
+          backendRoles: ["admin@wazuh.local"]
+        kibanaServer:
+          backendRoles: []
+        kibanaUser:
+          backendRoles: ["analyst@wazuh.local"]
+      customizeLoginButton:
+        enabled: true
+        text: "Log in with Dex (SSO)"
+  # the issuer name must resolve to Dex inside the cluster too (browsers resolve *.localhost to loopback)
+  extraSpec:
+    pod:
+      hostAliases:
+        - {ip: 10.96.0.53, hostnames: [dex.localhost]}
+  networkPolicy:
+    extraEgresses:
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: dex
+        ports:
+          - {protocol: TCP, port: 5556}
+
+wazuh:
+  worker:
+    enabled: false
+  clusterKey:
+    existingSecret: wazuh-cluster-key
+  apiCred:
+    existingSecret: wazuh-api-cred
+  authd:
+    existingSecret: wazuh-authd-pass
+  # Centralized config pushed to the node agents (group "default"). /var/log of the node is mounted at
+  # /host/var/log; the real files live under /var/log/pods (/var/log/containers only has symlinks).
+  agentGroupConf:
+    - name: default
+      agent: |
+        <agent_config>
+          <localfile>
+            <log_format>syslog</log_format>
+            <location>/host/var/log/pods/kube-system_*/*/*.log</location>
+          </localfile>
+          <localfile>
+            <log_format>syslog</log_format>
+            <location>/host/var/log/pods/argocd_*/*/*.log</location>
+          </localfile>
+        </agent_config>
+  master:
+    service:
+      # Without workers the master also receives the agents' events (1514).
+      ports:
+        - {name: registration, protocol: TCP, port: 1515, targetPort: 1515}
+        - {name: api, protocol: TCP, port: 55000, targetPort: 55000}
+        - {name: agents-events, protocol: TCP, port: 1514, targetPort: 1514}
+    networkPolicy:
+      extraIngresses:
+        # rules-sync Job (PostSync hook) talks to the API
+        - from:
+            - podSelector:
+                matchLabels:
+                  app: wazuh-rules-sync
+          ports:
+            - {protocol: TCP, port: 55000}
+        # github-mock sends audit-log events to the syslog listener
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: github-mock
+          ports:
+            - {protocol: TCP, port: 514}
+      extraEgresses:
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: s3
+          ports:
+            - {protocol: TCP, port: 8333}
+        # Slack / Opsgenie stand-in
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: webhook-mock
+          ports:
+            - {protocol: TCP, port: 8080}
+    # AWS shared credentials file for the aws-s3 wodle (Secret created by scripts/gen-secrets.sh)
+    additionalVolumes:
+      - name: aws-credentials
+        secret:
+          secretName: wazuh-aws-credentials
+      - name: integrations
+        configMap:
+          name: wazuh-integrations # kustomize appends a content hash
+          defaultMode: 0755
+    additionalVolumeMounts:
+      - name: aws-credentials
+        mountPath: /root/.aws/credentials
+        subPath: credentials
+        readOnly: true
+      - {name: integrations, mountPath: /var/ossec/integrations/custom-opsgenie, subPath: custom-opsgenie, readOnly: true}
+      - {name: integrations, mountPath: /var/ossec/integrations/custom-opsgenie.py, subPath: custom-opsgenie.py, readOnly: true}
+    additionalEnv:
+      - name: OPSGENIE_API_KEY
+        valueFrom:
+          secretKeyRef: {name: wazuh-integrations-cred, key: OPSGENIE_API_KEY}
+    extraConf: |
+      <!-- Syslog listener for the GitHub audit-log events (pod network of the kind cluster) -->
+      <remote>
+        <connection>syslog</connection>
+        <port>514</port>
+        <protocol>tcp</protocol>
+        <allowed-ips>10.244.0.0/16</allowed-ips>
+        <local_ip>0.0.0.0</local_ip>
+      </remote>
+
+      <!-- Slack is the notification channel (broad: level 8+); Opsgenie / JSM Operations is the paging
+           channel (level 12+). In production hook_url points to the real Slack webhook (a secret: render
+           it from your secret store) and to https://api.opsgenie.com/v2/alerts (JSM Operations uses the
+           same endpoint); here both go to the webhook-mock Deployment. -->
+      <integration>
+        <name>slack</name>
+        <hook_url>http://webhook-mock.webhook-mock.svc.cluster.local:8080/slack/services/T00000000/B00000000/mock</hook_url>
+        <level>8</level>
+        <alert_format>json</alert_format>
+      </integration>
+      <integration>
+        <name>custom-opsgenie</name>
+        <hook_url>http://webhook-mock.webhook-mock.svc.cluster.local:8080/opsgenie/v2/alerts</hook_url>
+        <level>12</level>
+        <alert_format>json</alert_format>
+      </integration>
+
+      <!-- CloudTrail from an S3-compatible bucket. In AWS: drop service_endpoint and use
+           an IAM role (iam_role_arn) instead of the credentials file. -->
+      <wodle name="aws-s3">
+        <disabled>no</disabled>
+        <interval>5m</interval>
+        <run_on_start>yes</run_on_start>
+        <skip_on_error>yes</skip_on_error>
+        <bucket type="cloudtrail">
+          <name>wazuh-cloudtrail</name>
+          <aws_profile>default</aws_profile>
+          <service_endpoint>http://s3.s3.svc.cluster.local:8333</service_endpoint>
+          <regions>eu-west-1</regions>
+          <only_logs_after>2026-NOV-01</only_logs_after>
+        </bucket>
+      </wodle>
+
+agent:
+  enabled: true # node agent DaemonSet (host FIM, inventory, SCA and logs)
+  images:
+    # Pinned by digest: only the 'latest' manifest has arm64 (the 4.14.1 tag is amd64-only). Wazuh 4.14.1.
+    tag: "latest@sha256:ab831cd26287cf4a6ab59cfc836b6a72fdc1383921a1a11519a782b44bde8f98"
+  joinManager:
+    workerHost: wazuh.wazuh.svc.cluster.local # no workers: events go to the master Service

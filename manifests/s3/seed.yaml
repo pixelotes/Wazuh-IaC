@@ -1,0 +1,78 @@
+# Uploads a fresh CloudTrail log file to the bucket: once after each sync and then every 10 minutes.
+# busybox builds the gzip (the aws-cli image has none); aws-cli uploads it.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloudtrail-seed
+  namespace: s3
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: prepare
+          image: busybox:1.37
+          command: ["/bin/sh", "/seed/prepare.sh"]
+          volumeMounts:
+            - {name: seed, mountPath: /seed, readOnly: true}
+            - {name: work, mountPath: /work}
+      containers:
+        - name: seed
+          image: amazon/aws-cli:2.39.3
+          command: ["/bin/sh", "/seed/seed.sh"]
+          envFrom:
+            - secretRef: {name: s3-cred}
+          env:
+            - {name: AWS_DEFAULT_REGION, value: eu-west-1}
+          volumeMounts:
+            - {name: seed, mountPath: /seed, readOnly: true}
+            - {name: work, mountPath: /work}
+      volumes:
+        - name: seed
+          configMap: {name: cloudtrail-seed}
+        - name: work
+          emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cloudtrail-seed
+  namespace: s3
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          initContainers:
+            - name: prepare
+              image: busybox:1.37
+              command: ["/bin/sh", "/seed/prepare.sh"]
+              volumeMounts:
+                - {name: seed, mountPath: /seed, readOnly: true}
+                - {name: work, mountPath: /work}
+          containers:
+            - name: seed
+              image: amazon/aws-cli:2.39.3
+              command: ["/bin/sh", "/seed/seed.sh"]
+              envFrom:
+                - secretRef: {name: s3-cred}
+              env:
+                - {name: AWS_DEFAULT_REGION, value: eu-west-1}
+              volumeMounts:
+                - {name: seed, mountPath: /seed, readOnly: true}
+                - {name: work, mountPath: /work}
+          volumes:
+            - name: seed
+              configMap: {name: cloudtrail-seed}
+            - name: work
+              emptyDir: {}

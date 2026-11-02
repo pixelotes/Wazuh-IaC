@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: github-mock
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: git://host.docker.internal:9418/wazuh-kubernetes
+    targetRevision: main
+    path: manifests/github-mock
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: github-mock
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

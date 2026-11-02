@@ -1,0 +1,27 @@
+{
+  "policy": {
+    "description": "Wazuh alerts: hot for 7 days, then merged and read-only until day 30, then deleted. Snapshots (SLM) keep 90 days.",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [],
+        "transitions": [{"state_name": "warm", "conditions": {"min_index_age": "7d"}}]
+      },
+      {
+        "name": "warm",
+        "actions": [
+          {"retry": {"count": 3, "backoff": "exponential", "delay": "1m"}, "force_merge": {"max_num_segments": 1}},
+          {"retry": {"count": 3, "backoff": "exponential", "delay": "1m"}, "read_only": {}}
+        ],
+        "transitions": [{"state_name": "delete", "conditions": {"min_index_age": "30d"}}]
+      },
+      {
+        "name": "delete",
+        "actions": [{"retry": {"count": 3, "backoff": "exponential", "delay": "1m"}, "delete": {}}],
+        "transitions": []
+      }
+    ],
+    "ism_template": [{"index_patterns": ["wazuh-alerts-*"], "priority": 100}]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "description": "Daily snapshot of the Wazuh indices to S3; snapshots are kept 90 days (at least 7)",
+  "creation": {
+    "schedule": {"cron": {"expression": "0 3 * * *", "timezone": "UTC"}},
+    "time_limit": "1h"
+  },
+  "deletion": {
+    "schedule": {"cron": {"expression": "0 4 * * *", "timezone": "UTC"}},
+    "condition": {"max_age": "90d", "min_count": 7},
+    "time_limit": "1h"
+  },
+  "snapshot_config": {
+    "repository": "s3-backups",
+    "indices": "wazuh-alerts-*,wazuh-archives-*,wazuh-monitoring-*,wazuh-statistics-*",
+    "ignore_unavailable": true,
+    "include_global_state": false,
+    "partial": false,
+    "date_format": "yyyy-MM-dd-HH:mm",
+    "timezone": "UTC"
+  }
+}

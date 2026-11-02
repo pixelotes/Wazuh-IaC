@@ -1,0 +1,7 @@
+# Minimal Argo CD for the local kind cluster. Everything else is managed by Argo CD itself.
+configs:
+  params:
+    server.insecure: true
+  cm:
+    # kustomize/wazuh inflates the Wazuh Helm chart and reads values from ../../values
+    kustomize.buildOptions: --enable-helm --load-restrictor LoadRestrictionsNone

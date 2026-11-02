@@ -1,0 +1,12 @@
+# Syslog listener of the master (the chart only exposes syslog on workers, and there are none).
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazuh-syslog
+  namespace: wazuh
+spec:
+  selector:
+    app: wazuh-manager
+    node-type: master
+  ports:
+    - {name: syslog-tcp, protocol: TCP, port: 514, targetPort: 514}

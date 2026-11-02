@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dex
+  namespace: dex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dex
+  template:
+    metadata:
+      labels:
+        app: dex
+    spec:
+      containers:
+        - name: dex
+          image: ghcr.io/dexidp/dex:v2.44.0
+          args: ["dex", "serve", "/etc/dex/config.yaml"]
+          envFrom:
+            - secretRef: {name: dex-cred} # created by scripts/gen-secrets.sh
+          ports:
+            - {name: http, containerPort: 5556}
+          readinessProbe:
+            httpGet: {path: /healthz/ready, port: 5558}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/dex, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: dex-config}
+---
+# The issuer is http://dex.localhost:5556: browsers resolve *.localhost to loopback, and the Wazuh pods map
+# the name to this fixed ClusterIP with hostAliases (values/wazuh.yaml). NodePort 30556 is published on the
+# host by kind/cluster.yaml; on a cluster created without it, use kubectl port-forward.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dex
+  namespace: dex
+spec:
+  type: NodePort
+  clusterIP: 10.96.0.53
+  selector:
+    app: dex
+  ports:
+    - {name: http, port: 5556, targetPort: http, nodePort: 30556}

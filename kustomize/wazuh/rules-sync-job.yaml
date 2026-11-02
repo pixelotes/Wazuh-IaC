@@ -1,0 +1,37 @@
+# Pushes rules/iac-*.xml to the manager through the Wazuh API after every sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wazuh-rules-sync
+  namespace: wazuh
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: wazuh-rules-sync
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: python:3.13-alpine
+          command: ["python", "-I", "/sync/rules-sync.py"]
+          env:
+            - name: API_USERNAME
+              valueFrom: {secretKeyRef: {name: wazuh-api-cred, key: API_USERNAME}}
+            - name: API_PASSWORD
+              valueFrom: {secretKeyRef: {name: wazuh-api-cred, key: API_PASSWORD}}
+          volumeMounts:
+            - {name: sync, mountPath: /sync, readOnly: true}
+            - {name: rules, mountPath: /rules, readOnly: true}
+            - {name: decoders, mountPath: /decoders, readOnly: true}
+      volumes:
+        - name: sync
+          configMap: {name: wazuh-rules-sync}
+        - name: rules
+          configMap: {name: wazuh-iac-rules}
+        - name: decoders
+          configMap: {name: wazuh-iac-decoders}

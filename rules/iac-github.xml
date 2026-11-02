@@ -1,0 +1,14 @@
+<!-- Correlation on top of the native GitHub ruleset (91100-91449). Custom ids 100200-100299. -->
+<group name="github,iac,">
+
+  <!-- Several repositories deleted by the same actor in a short time -->
+  <rule id="100200" level="14" frequency="3" timeframe="300">
+    <if_matched_sid>91320</if_matched_sid>
+    <same_field>github.actor</same_field>
+    <description>GitHub: mass repository deletion by $(github.actor)</description>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
+  </rule>
+
+</group>

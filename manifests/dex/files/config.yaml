@@ -1,0 +1,28 @@
+# Dex: a small OIDC provider standing in for the corporate IdP (Okta, Entra ID, Keycloak...).
+# Passwords and the client secret come from the dex-cred Secret (scripts/gen-secrets.sh) via hashFromEnv /
+# secretEnv. Static users carry no groups, so Wazuh maps roles by the email claim (see values/wazuh.yaml).
+issuer: http://dex.localhost:5556
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+telemetry:
+  http: 0.0.0.0:5558 # health endpoints
+oauth2:
+  skipApprovalScreen: true
+enablePasswordDB: true
+staticClients:
+  - id: wazuh
+    name: Wazuh
+    secretEnv: WAZUH_OIDC_CLIENT_SECRET
+    redirectURIs:
+      - http://localhost:8443/auth/openid/login
+staticPasswords:
+  - email: admin@wazuh.local
+    username: admin
+    userID: "10000000-0000-0000-0000-000000000001"
+    hashFromEnv: ADMIN_PASSWORD_HASH
+  - email: analyst@wazuh.local
+    username: analyst
+    userID: "10000000-0000-0000-0000-000000000002"
+    hashFromEnv: ANALYST_PASSWORD_HASH

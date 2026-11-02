@@ -1,0 +1,16 @@
+# Local S3-compatible object store (SeaweedFS) standing in for AWS S3, plus synthetic
+# CloudTrail logs so the Wazuh aws-s3 wodle has something to ingest.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - seed.yaml
+configMapGenerator:
+  - name: cloudtrail-seed
+    files:
+      - files/seed.sh
+      - files/prepare.sh
+      - files/cloudtrail-events.json
+generatorOptions:
+  disableNameSuffixHash: true

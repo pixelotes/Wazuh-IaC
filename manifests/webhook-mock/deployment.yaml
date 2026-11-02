@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-mock
+  namespace: webhook-mock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-mock
+  template:
+    metadata:
+      labels:
+        app: webhook-mock
+    spec:
+      containers:
+        - name: mock
+          image: python:3.13-alpine
+          command: ["python", "-I", "-u", "/app/webhook_mock.py"]
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /messages, port: http}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: app, mountPath: /app, readOnly: true}
+      volumes:
+        - name: app
+          configMap: {name: webhook-mock}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-mock
+  namespace: webhook-mock
+spec:
+  selector:
+    app: webhook-mock
+  ports:
+    - {name: http, port: 8080, targetPort: http}

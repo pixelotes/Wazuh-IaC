@@ -1,0 +1,105 @@
+# Renders the Wazuh chart and adds Argo CD sync waves so the PKI (Issuers and Certificates)
+# exists before the StatefulSets, which mount the TLS Secrets and never become Healthy without them.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: wazuh # also lets the hashed ConfigMap name be rewritten in the manager's volumes
+
+resources:
+  - rules-sync-job.yaml
+  - syslog-service.yaml
+  - dashboards-import-job.yaml
+  - backup-setup-job.yaml
+
+configMapGenerator:
+  - name: wazuh-rules-sync
+    files:
+      - files/rules-sync.py
+    options:
+      disableNameSuffixHash: true
+  - name: wazuh-dashboards-import
+    files:
+      - files/dashboards-import.py
+    options:
+      disableNameSuffixHash: true
+  - name: wazuh-dashboards
+    files:
+      - ../../dashboards/aws-cloudtrail.ndjson
+      - ../../dashboards/github-audit.ndjson
+    options:
+      disableNameSuffixHash: true
+  - name: wazuh-backup-setup
+    files:
+      - files/backup-setup.py
+    options:
+      disableNameSuffixHash: true
+  - name: wazuh-backup-config
+    files:
+      - ../../indexer/snapshot-repository.json
+      - ../../indexer/slm-wazuh-daily.json
+      - ../../indexer/ism-wazuh-alerts.json
+    options:
+      disableNameSuffixHash: true
+  # Hashed on purpose (see wazuh-integrations): a change rolls the indexer
+  - name: wazuh-indexer-s3-init
+    files:
+      - files/indexer-s3-init.sh
+  - name: wazuh-iac-decoders
+    files:
+      - ../../decoders/iac-cri.xml
+    options:
+      disableNameSuffixHash: true
+  - name: wazuh-iac-rules
+    files:
+      - ../../rules/iac-aws-cloudtrail.xml
+      - ../../rules/iac-github.xml
+      - ../../rules/iac-k8s-nodes.xml
+    options:
+      disableNameSuffixHash: true
+  # Hashed name on purpose: kustomize rewrites the manager's volume reference, so editing a script
+  # changes the pod template and rolls the manager (subPath mounts never update live).
+  - name: wazuh-integrations
+    files:
+      - ../../integrations/custom-opsgenie
+      - ../../integrations/custom-opsgenie.py
+
+helmCharts:
+  - name: wazuh
+    repo: https://morgoved.github.io/wazuh-helm/
+    version: 2.4.0
+    releaseName: wazuh
+    namespace: wazuh
+    valuesFile: ../../values/wazuh.yaml
+    additionalValuesFiles:
+      - ../../values/wazuh-credentials.yaml
+
+patches:
+  - target: {kind: Issuer, name: wazuh-selfsigned-issuer}
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: wazuh-selfsigned-issuer
+        annotations:
+          argocd.argoproj.io/sync-wave: "-3"
+  - target: {kind: Certificate, name: wazuh-root-ca}
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: wazuh-root-ca
+        annotations:
+          argocd.argoproj.io/sync-wave: "-2"
+  - target: {kind: Issuer, name: wazuh-ca-issuer}
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: wazuh-ca-issuer
+        annotations:
+          argocd.argoproj.io/sync-wave: "-2"
+  - target: {kind: Certificate, name: wazuh-(admin|dashboard|filebeat|node)}
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "-1"

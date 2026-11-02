@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-audit-mock
+  namespace: github-mock
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-audit-mock
+  template:
+    metadata:
+      labels:
+        app: github-audit-mock
+    spec:
+      containers:
+        - name: mock
+          image: python:3.13-alpine
+          command: ["python", "-I", "-u", "/app/github_audit_mock.py"]
+          env:
+            - {name: EVENTS_PER_MINUTE, value: "6"}
+            - {name: BURST_EVERY_MINUTES, value: "15"}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 64Mi}
+          volumeMounts:
+            - {name: app, mountPath: /app, readOnly: true}
+      volumes:
+        - name: app
+          configMap: {name: github-audit-mock}

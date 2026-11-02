@@ -1,0 +1,69 @@
+<!-- Custom detections on top of the native CloudTrail ruleset (80200 series).
+     Source of truth is this repo: kustomize/wazuh pushes the file through the Wazuh API.
+     Custom rule ids are 100000-120000; this file uses 100100-100199. -->
+<group name="aws,aws_cloudtrail,iac,">
+
+  <!-- Root console login without MFA (native 80253 only logs a successful login at level 3) -->
+  <rule id="100100" level="12">
+    <if_sid>80253</if_sid>
+    <field name="aws.userIdentity.type">^Root$</field>
+    <field name="aws.additionalEventData.MFAUsed">^No$</field>
+    <description>AWS: root account console login without MFA</description>
+    <mitre>
+      <id>T1078.004</id>
+    </mitre>
+  </rule>
+
+  <!-- Audit trail tampering -->
+  <rule id="100101" level="12">
+    <if_sid>80202</if_sid>
+    <field name="aws.eventName">^StopLogging$|^DeleteTrail$|^UpdateTrail$|^PutEventSelectors$</field>
+    <description>AWS: CloudTrail tampering ($(aws.eventName)) by $(aws.userIdentity.userName)</description>
+    <mitre>
+      <id>T1562.008</id>
+    </mitre>
+  </rule>
+
+  <!-- Privilege escalation: AdministratorAccess attached to a principal -->
+  <rule id="100102" level="12">
+    <if_sid>80202</if_sid>
+    <field name="aws.eventName">^AttachUserPolicy$|^AttachRolePolicy$|^AttachGroupPolicy$</field>
+    <field name="aws.requestParameters.policyArn">AdministratorAccess$</field>
+    <description>AWS: AdministratorAccess attached by $(aws.userIdentity.userName)</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+  </rule>
+
+  <!-- New access key -->
+  <rule id="100103" level="8">
+    <if_sid>80202</if_sid>
+    <field name="aws.eventName">^CreateAccessKey$</field>
+    <description>AWS: access key created by $(aws.userIdentity.userName)</description>
+    <mitre>
+      <id>T1098.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Security group opened to the internet -->
+  <rule id="100104" level="10">
+    <if_sid>80202</if_sid>
+    <field name="aws.eventName">^AuthorizeSecurityGroupIngress$</field>
+    <field name="aws.requestParameters.ipPermissions.items.ipRanges.items" type="pcre2">0\.0\.0\.0/0</field>
+    <description>AWS: security group opened to 0.0.0.0/0 by $(aws.userIdentity.userName)</description>
+    <mitre>
+      <id>T1562.007</id>
+    </mitre>
+  </rule>
+
+  <!-- Brute force against the console -->
+  <rule id="100105" level="10" frequency="3" timeframe="300">
+    <if_matched_sid>80254</if_matched_sid>
+    <same_field>aws.source_ip_address</same_field>
+    <description>AWS: repeated console login failures from $(aws.source_ip_address)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+
+</group>

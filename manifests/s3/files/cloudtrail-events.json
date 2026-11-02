@@ -1,0 +1,259 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEALICE",
+        "arn": "arn:aws:iam::123456789012:user/alice",
+        "accountId": "123456789012",
+        "userName": "alice"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.50",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Failure"
+      },
+      "eventID": "consolelogin-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management",
+      "additionalEventData": {
+        "LoginTo": "https://console.aws.amazon.com/console/home",
+        "MobileVersion": "No",
+        "MFAUsed": "No"
+      },
+      "errorMessage": "Failed authentication"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "Root",
+        "principalId": "123456789012",
+        "arn": "arn:aws:iam::123456789012:root",
+        "accountId": "123456789012"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "198.51.100.23",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Success"
+      },
+      "eventID": "consolelogin-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management",
+      "additionalEventData": {
+        "LoginTo": "https://console.aws.amazon.com/console/home",
+        "MobileVersion": "No",
+        "MFAUsed": "No"
+      }
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEBOB",
+        "arn": "arn:aws:iam::123456789012:user/bob",
+        "accountId": "123456789012",
+        "userName": "bob"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "iam.amazonaws.com",
+      "eventName": "CreateAccessKey",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.77",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": {
+        "userName": "bob"
+      },
+      "responseElements": {
+        "accessKey": {
+          "userName": "bob",
+          "status": "Active",
+          "accessKeyId": "AKIAEXAMPLEEXAMPLE1"
+        }
+      },
+      "eventID": "createaccesskey-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEBOB",
+        "arn": "arn:aws:iam::123456789012:user/bob",
+        "accountId": "123456789012",
+        "userName": "bob"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "ec2.amazonaws.com",
+      "eventName": "AuthorizeSecurityGroupIngress",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.77",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": {
+        "groupId": "sg-0123456789abcdef0",
+        "ipPermissions": {
+          "items": [
+            {
+              "ipProtocol": "tcp",
+              "fromPort": 22,
+              "toPort": 22,
+              "ipRanges": {
+                "items": [
+                  {
+                    "cidrIp": "0.0.0.0/0"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "responseElements": {
+        "_return": true
+      },
+      "eventID": "authorizesecuritygroupingress-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEBOB",
+        "arn": "arn:aws:iam::123456789012:user/bob",
+        "accountId": "123456789012",
+        "userName": "bob"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "cloudtrail.amazonaws.com",
+      "eventName": "StopLogging",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.77",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": {
+        "name": "management-events"
+      },
+      "responseElements": null,
+      "eventID": "stoplogging-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEBOB",
+        "arn": "arn:aws:iam::123456789012:user/bob",
+        "accountId": "123456789012",
+        "userName": "bob"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "iam.amazonaws.com",
+      "eventName": "AttachUserPolicy",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.77",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": {
+        "userName": "mallory",
+        "policyArn": "arn:aws:iam::aws:policy/AdministratorAccess"
+      },
+      "responseElements": null,
+      "eventID": "attachuserpolicy-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEALICE",
+        "arn": "arn:aws:iam::123456789012:user/alice",
+        "accountId": "123456789012",
+        "userName": "alice"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.50",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Failure"
+      },
+      "eventID": "consolelogin-fail2-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management",
+      "additionalEventData": {
+        "LoginTo": "https://console.aws.amazon.com/console/home",
+        "MobileVersion": "No",
+        "MFAUsed": "No"
+      },
+      "errorMessage": "Failed authentication"
+    },
+    {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEALICE",
+        "arn": "arn:aws:iam::123456789012:user/alice",
+        "accountId": "123456789012",
+        "userName": "alice"
+      },
+      "eventTime": "__NOW__",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-west-1",
+      "sourceIPAddress": "203.0.113.50",
+      "userAgent": "Mozilla/5.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Failure"
+      },
+      "eventID": "consolelogin-fail3-__RUN__",
+      "readOnly": false,
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "123456789012",
+      "eventCategory": "Management",
+      "additionalEventData": {
+        "LoginTo": "https://console.aws.amazon.com/console/home",
+        "MobileVersion": "No",
+        "MFAUsed": "No"
+      },
+      "errorMessage": "Failed authentication"
+    }
+  ]
+}

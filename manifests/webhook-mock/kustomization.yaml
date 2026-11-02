@@ -1,0 +1,11 @@
+# Stand-in for Slack and Opsgenie / JSM Operations. Shows what Wazuh would have sent.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: webhook-mock
+resources:
+  - deployment.yaml
+configMapGenerator:
+  - name: webhook-mock
+    files:
+      - files/webhook_mock.py
+# Hashed ConfigMap name: editing the script rolls the Deployment

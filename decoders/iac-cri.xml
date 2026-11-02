@@ -1,0 +1,14 @@
+<!-- Container runtime (CRI) log lines read from /var/log/pods on the nodes:
+       2026-11-02T13:40:12.123456789Z stderr F <message>
+     The syslog predecoder takes the ISO timestamp and then reads "stderr" as the hostname, so the decoder
+     usually sees "F <message>" (the stream stays in predecoder.hostname). The stream is optional here in case
+     the predecoder behaves differently. The rules in rules/iac-k8s-nodes.xml match on cri.message. -->
+<decoder name="cri-container">
+  <prematch type="pcre2">^(?:(?:stdout|stderr) )?[FP] \S</prematch>
+</decoder>
+
+<decoder name="cri-container-fields">
+  <parent>cri-container</parent>
+  <regex type="pcre2">^(?:(?:stdout|stderr) )?[FP] (.*)$</regex>
+  <order>cri.message</order>
+</decoder>
