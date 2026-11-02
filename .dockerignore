@@ -1,0 +1,28 @@
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets and credentials. Real secrets never go to Git: scripts/gen-secrets.sh creates them in the cluster.
+# values/wazuh-credentials.yaml is deliberately tracked: it only holds bcrypt hashes (see the README).
+.env
+.env.*
+*.secret.yaml
+*.pem
+*.key
+*.p12
+kubeconfig
+kubeconfig.*
+
+# Helm charts that kustomize --enable-helm downloads for local renders (Argo CD downloads its own copy)
+kustomize/wazuh/charts/
+
+# Python
+__pycache__/
+*.pyc
+
+# Scratch
+*.log
+!tests/events/*.log
+tmp/
